@@ -1,13 +1,13 @@
+// server.js
 require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql");
-const bodyParser = require("body-parser");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json()); // Body parser integrated with Express
 
 const db = mysql.createPool({
   port: process.env.DB_PORT,
@@ -18,38 +18,36 @@ const db = mysql.createPool({
   database: process.env.DB_DATABASE,
 });
 
-db.getConnection((error) => {
-  if (!error) {
-    console.log("Connection to database successful");
-  } else {
-    console.log("Failed to connect to database:", error);
+db.getConnection((error, connection) => {
+  if (error) {
+    console.error("Failed to connect to database:", error);
+    process.exit(1); // Exit the process if unable to connect to database
   }
+  console.log("Connection to database successful");
+  connection.release(); // Release the connection
 });
 
 app.get("/", (req, res) => {
     res.send("Hello Everyone");
 });
 
-app.listen(PORT, () => {
-  console.log("Server is running on port " + PORT);
-});
-
-// MESSAGE
 app.post("/contact", (req, res) => {
-  const { adress, message } = req.body;
-  const qr = "INSERT INTO contact (adress, message) VALUES (?, ?)";
-
-  db.query(qr, [adress, message], (error, results) => {
+  const { address, message } = req.body;
+  const sql = "INSERT INTO contact (address, message) VALUES (?, ?)";
+  
+  db.query(sql, [address, message], (error, results) => {
     if (error) {
-      console.error(
-        "Erreur lors de l'exécution de la requête SQL :",
-        error.message
-      );
-      res.status(500).send({ message: "Erreur d'interval serveur" });
-    } else if (results.affectedRows > 0) {
-      res.status(200).send({ message: "Message envoyé avec succès" });
+      console.error("SQL query execution error:", error);
+      return res.status(500).send({ message: "Internal server error" });
+    }
+    if (results.affectedRows > 0) {
+      return res.status(200).send({ message: "Message sent successfully" });
     } else {
-      res.status(500).send({ message: "Erreur de l'envoi du message" });
+      return res.status(500).send({ message: "Failed to send message" });
     }
   });
+});
+
+app.listen(PORT, () => {
+  console.log("Server is running on port " + PORT);
 });
