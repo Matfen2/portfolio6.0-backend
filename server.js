@@ -1,8 +1,8 @@
-// server.js
 require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -18,6 +18,7 @@ const db = mysql.createPool({
   database: process.env.DB_DATABASE,
 });
 
+// Vérification de la connexion à la base de données au démarrage du serveur
 db.getConnection((error, connection) => {
   if (error) {
     console.error("Failed to connect to database:", error);
@@ -27,19 +28,26 @@ db.getConnection((error, connection) => {
   connection.release(); // Release the connection
 });
 
+// Route pour la page d'accueil
 app.get("/", (req, res) => {
-    res.send("Hello Everyone");
+  res.send("Hello Everyone");
 });
 
+// Route pour gérer les messages de contact
 app.post("/contact", (req, res) => {
-  const { address, message } = req.body;
-  const sql = "INSERT INTO contact (address, message) VALUES (?, ?)";
+  let adress = req.body.adress;
+  let message = req.body.message;
   
-  db.query(sql, [address, message], (error, results) => {
+  // Requête SQL pour insérer les données de contact dans la base de données
+  let qr = `INSERT INTO user (adress, message) VALUES (?, ?)`;
+  
+  // Exécution de la requête SQL
+  db.query(qr, [adress, message], (error, results) => {
     if (error) {
       console.error("SQL query execution error:", error);
       return res.status(500).send({ message: "Internal server error" });
     }
+    // Vérification si des lignes ont été affectées par la requête
     if (results.affectedRows > 0) {
       return res.status(200).send({ message: "Message sent successfully" });
     } else {
@@ -48,6 +56,7 @@ app.post("/contact", (req, res) => {
   });
 });
 
+// Démarrage du serveur
 app.listen(PORT, () => {
   console.log("Server is running on port " + PORT);
 });
